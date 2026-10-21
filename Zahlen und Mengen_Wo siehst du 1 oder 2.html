@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Zahlen lernen: Wo siehst du 1 oder 2?</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Canvas Confetti CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap');
+
+        body {
+            font-family: 'Fredoka', cursive, sans-serif;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+            overscroll-behavior: none;
+        }
+
+        /* Strahlender türkis-blauer Farbverlauf */
+        .bg-gradient-bright {
+            background: linear-gradient(135deg, #0284c7 0%, #38bdf8 50%, #06b6d4 100%);
+        }
+
+        .app-container {
+            height: 100vh;
+            height: 100dvh;
+            width: 100vw;
+            overflow: hidden;
+        }
+
+        .card-border-default {
+            border: 8px solid #FACC15; /* Tailwind amber-400 */
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25), 0 0 15px rgba(250, 204, 21, 0.4);
+        }
+
+        .card-correct {
+            border: 10px solid #22C55E !important; /* Green-500 */
+            box-shadow: 0 0 35px #22C55E, inset 0 0 20px rgba(34, 197, 94, 0.4) !important;
+            transform: scale(1.05);
+        }
+
+        .card-wrong {
+            border: 10px solid #EF4444 !important; /* Red-500 */
+            box-shadow: 0 0 35px #EF4444, inset 0 0 20px rgba(239, 68, 68, 0.4) !important;
+            animation: shake 0.35s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-4px, 0, 0); }
+            20%, 80% { transform: translate3d(6px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-8px, 0, 0); }
+            40%, 60% { transform: translate3d(8px, 0, 0); }
+        }
+
+        .bounce-gentle {
+            animation: bounceGentle 2s infinite;
+        }
+
+        @keyframes bounceGentle {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+
+        .btn-active-effect:active {
+            transform: scale(0.92);
+        }
+
+        .symbol-item {
+            filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.15));
+            transition: transform 0.2s ease;
+        }
+
+        .speaking-pulse {
+            animation: pulse-ring 1.25s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.7); }
+            70% { transform: scale(1.05); box-shadow: 0 0 0 15px rgba(249, 115, 22, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); }
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-white select-none">
+
+    <!-- MAIN APP CONTAINER -->
+    <div class="app-container flex flex-col justify-between bg-gradient-bright p-3 sm:p-5 relative">
+        
+        <!-- HEADER BAR -->
+        <header class="flex items-center justify-between w-full max-w-5xl mx-auto z-20 shrink-0">
+            <!-- Home Button -->
+            <button id="btn-home" onclick="confirmGoHome()" class="btn-active-effect bg-amber-400 hover:bg-amber-300 text-amber-950 font-black p-3 sm:p-4 rounded-2xl shadow-lg border-4 border-amber-200 flex items-center justify-center min-w-[56px] min-h-[56px] text-xl sm:text-2xl" aria-label="Startseite">
+                <i class="fa-solid fa-house"></i>
+            </button>
+
+            <!-- Progress Indicator: nur "1 / 6" -->
+            <div id="progress-container" class="hidden bg-sky-950/40 px-5 py-2 rounded-2xl border border-white/30 flex items-center justify-center backdrop-blur-md shadow-md">
+                <span id="progress-text" class="text-amber-300 font-black text-2xl sm:text-3xl tracking-wider drop-shadow">1 / 6</span>
+            </div>
+
+            <!-- Silent Mute/Unmute Button -->
+            <button id="btn-sound" onclick="toggleSound()" class="btn-active-effect bg-sky-900/80 hover:bg-sky-800 text-white p-3 sm:p-4 rounded-2xl shadow-lg border-2 border-sky-300/50 flex items-center justify-center min-w-[56px] min-h-[56px] text-xl sm:text-2xl" aria-label="Ton Umschalten">
+                <i id="sound-icon" class="fa-solid fa-volume-high"></i>
+            </button>
+        </header>
+
+        <!-- SCREEN 1: START SCREEN -->
+        <main id="screen-start" class="flex-1 flex flex-col items-center justify-center text-center p-4 z-10 max-w-3xl mx-auto">
+            <div class="mb-6 relative">
+                <div class="text-7xl sm:text-9xl mb-2 bounce-gentle filter drop-shadow-lg">
+                    ⭐ 🎈 🍎
+                </div>
+                <h1 class="text-4xl sm:text-6xl font-black text-amber-300 tracking-wide drop-shadow-[0_4px_8px_rgba(0,0,0,0.4)]">
+                    Zahlen & Mengen
+                </h1>
+                <p class="text-2xl sm:text-3xl text-white font-extrabold mt-3 drop-shadow">
+                    Wo siehst du 1 oder 2?
+                </p>
+            </div>
+
+            <button onclick="startGame()" class="btn-active-effect bg-emerald-500 hover:bg-emerald-400 text-white font-black text-2xl sm:text-4xl py-5 px-10 rounded-3xl shadow-[0_10px_0_#059669] hover:shadow-[0_6px_0_#059669] active:translate-y-1 transition-all duration-150 border-4 border-emerald-200 flex items-center gap-4">
+                <i class="fa-solid fa-play text-3xl sm:text-5xl"></i>
+                <span>SPIEL STARTEN</span>
+            </button>
+        </main>
+
+        <!-- SCREEN 2: GAMEPLAY SCREEN -->
+        <main id="screen-game" class="hidden flex-1 flex flex-col items-center justify-between py-2 sm:py-4 z-10 w-full max-w-5xl mx-auto">
+            
+            <!-- Question Box mit orangem Vorlese-Button -->
+            <div class="bg-amber-400 border-4 border-amber-200 text-amber-950 rounded-3xl p-3 sm:p-4 shadow-xl flex items-center justify-between gap-3 w-full max-w-3xl my-auto">
+                <div class="flex-1 text-center">
+                    <h2 id="question-title" class="text-2xl sm:text-4xl font-black tracking-wide drop-shadow-sm">
+                        Wo siehst du 1?
+                    </h2>
+                </div>
+                <button id="btn-replay" onclick="speakQuestion()" class="btn-active-effect bg-orange-500 hover:bg-orange-400 text-white p-3 sm:p-4 rounded-2xl shadow-md border-2 border-orange-300 flex items-center justify-center shrink-0 min-w-[52px] min-h-[52px] text-xl sm:text-2xl" aria-label="Frage noch einmal vorlesen">
+                    <i class="fa-solid fa-volume-high"></i>
+                </button>
+            </div>
+
+            <!-- 3 Karten mit gelben Rändern -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 w-full max-w-5xl my-auto px-2">
+                
+                <!-- Card 0 -->
+                <button id="card-0" onclick="selectCard(0)" class="card-border-default bg-white hover:bg-slate-50 rounded-3xl p-4 sm:p-6 transition-all duration-200 flex items-center justify-center min-h-[160px] sm:min-h-[220px] md:min-h-[280px] relative cursor-pointer active:scale-95">
+                    <div id="card-content-0" class="w-full h-full flex items-center justify-center flex-wrap gap-3 sm:gap-6"></div>
+                </button>
+
+                <!-- Card 1 -->
+                <button id="card-1" onclick="selectCard(1)" class="card-border-default bg-white hover:bg-slate-50 rounded-3xl p-4 sm:p-6 transition-all duration-200 flex items-center justify-center min-h-[160px] sm:min-h-[220px] md:min-h-[280px] relative cursor-pointer active:scale-95">
+                    <div id="card-content-1" class="w-full h-full flex items-center justify-center flex-wrap gap-3 sm:gap-6"></div>
+                </button>
+
+                <!-- Card 2 -->
+                <button id="card-2" onclick="selectCard(2)" class="card-border-default bg-white hover:bg-slate-50 rounded-3xl p-4 sm:p-6 transition-all duration-200 flex items-center justify-center min-h-[160px] sm:min-h-[220px] md:min-h-[280px] relative cursor-pointer active:scale-95">
+                    <div id="card-content-2" class="w-full h-full flex items-center justify-center flex-wrap gap-3 sm:gap-6"></div>
+                </button>
+
+            </div>
+
+            <!-- Feedback Nachrichten-Bereich -->
+            <div class="h-10 sm:h-12 flex items-center justify-center my-auto">
+                <p id="feedback-text" class="text-xl sm:text-3xl font-black text-center min-h-[1.5em] transition-all opacity-0 drop-shadow-md"></p>
+            </div>
+
+        </main>
+
+        <!-- SCREEN 3: END SCREEN -->
+        <main id="screen-end" class="hidden flex-1 flex flex-col items-center justify-center text-center p-4 z-10 max-w-2xl mx-auto my-auto">
+            <div class="bg-white/20 backdrop-blur-lg border-4 border-amber-400 rounded-3xl p-6 sm:p-10 shadow-2xl w-full flex flex-col items-center">
+                <div class="text-7xl sm:text-8xl mb-4 bounce-gentle">
+                    🏆 🎉 ⭐️
+                </div>
+                <h2 class="text-3xl sm:text-5xl font-black text-amber-300 mb-2 drop-shadow-md">
+                    Super gemacht!
+                </h2>
+                <p class="text-xl sm:text-2xl text-white font-extrabold mb-8 drop-shadow">
+                    Du hast alle Mengen richtig erkannt!
+                </p>
+
+                <div class="flex flex-col sm:flex-row gap-4 w-full">
+                    <button onclick="startGame()" class="btn-active-effect flex-1 bg-emerald-500 hover:bg-emerald-400 text-white font-black text-xl sm:text-2xl py-4 px-6 rounded-2xl shadow-lg border-4 border-emerald-300 flex items-center justify-center gap-3">
+                        <i class="fa-solid fa-rotate-right"></i>
+                        <span>Nochmal spielen</span>
+                    </button>
+                    <button onclick="showStartScreen()" class="btn-active-effect flex-1 bg-sky-900 hover:bg-sky-800 text-white font-black text-xl sm:text-2xl py-4 px-6 rounded-2xl shadow-lg border-4 border-sky-400 flex items-center justify-center gap-3">
+                        <i class="fa-solid fa-house"></i>
+                        <span>Startbildschirm</span>
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <!-- MODAL: DIALOG STARTBILDSCHIRM CONFIRMATION -->
+        <div id="modal-confirm" class="hidden fixed inset-0 bg-sky-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+            <div class="bg-sky-900 border-4 border-amber-400 rounded-3xl p-6 sm:p-8 max-w-md w-full text-center shadow-2xl">
+                <div class="text-5xl mb-3">🏠</div>
+                <h3 class="text-2xl sm:text-3xl font-black text-amber-300 mb-3">
+                    Zum Startbildschirm?
+                </h3>
+                <p class="text-white text-xl font-medium mb-6">
+                    Möchtest du das aktuelle Spiel wirklich abbrechen?
+                </p>
+                <div class="flex gap-4">
+                    <button onclick="closeModal()" class="flex-1 bg-sky-700 hover:bg-sky-600 text-white font-bold py-3 px-4 rounded-xl border-2 border-sky-400 text-lg">
+                        Weiterspielen
+                    </button>
+                    <button onclick="goHome()" class="flex-1 bg-red-500 hover:bg-red-400 text-white font-bold py-3 px-4 rounded-xl border-2 border-red-300 text-lg">
+                        Ja, Abbrechen
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- AUDIO & SPIELLOGIK -->
+    <script>
+        const SYMBOLS_POOL = [
+            { name: "Sterne", icon: "⭐" },
+            { name: "Herzen", icon: "❤️" },
+            { name: "Äpfel", icon: "🍎" },
+            { name: "Sonnen", icon: "☀️" },
+            { name: "Autos", icon: "🚗" },
+            { name: "Bälle", icon: "⚽" },
+            { name: "Blumen", icon: "🌸" },
+            { name: "Entchen", icon: "🦆" },
+            { name: "Erdbeeren", icon: "🍓" },
+            { name: "Fische", icon: "🐟" },
+            { name: "Schmetterlinge", icon: "🦋" },
+            { name: "Luftballons", icon: "🎈" }
+        ];
+
+        const TOTAL_ROUNDS = 6;
+        let currentRound = 0;
+        let isAudioMuted = false;
+        let isSolved = false;
+        let cardTimeouts = {};
+        let roundsData = [];
+        let synthAudioCtx = null;
+
+        const speech = window.speechSynthesis;
+        let selectedMaleVoice = null;
+
+        function initVoices() {
+            if (!speech) return;
+            const voices = speech.getVoices();
+            const germanVoices = voices.filter(v => v.lang.startsWith('de'));
+            
+            selectedMaleVoice = germanVoices.find(v => 
+                v.name.toLowerCase().includes('stefan') || 
+                v.name.toLowerCase().includes('markus') || 
+                v.name.toLowerCase().includes('yannick') || 
+                v.name.toLowerCase().includes('jorge') || 
+                v.name.toLowerCase().includes('male') || 
+                v.name.toLowerCase().includes('männlich')
+            ) || germanVoices.find(v => v.name.includes('Google') || v.name.includes('Natural'))
+              || germanVoices[0] 
+              || null;
+        }
+
+        if (speech) {
+            initVoices();
+            if (speech.onvoiceschanged !== undefined) {
+                speech.onvoiceschanged = initVoices;
+            }
+        }
+
+        function speakText(text, onEndCallback = null) {
+            if (!speech) {
+                if (onEndCallback) onEndCallback();
+                return;
+            }
+
+            // Unmittelbare Klickbarkeit: Laufende Sprachausgabe abbrechen
+            speech.cancel();
+
+            if (isAudioMuted) {
+                if (onEndCallback) onEndCallback();
+                return;
+            }
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'de-DE';
+            utterance.rate = 0.65; // Verlangsamte Rate
+            utterance.pitch = 0.9;  // Tiefere Tonlage
+
+            if (selectedMaleVoice) {
+                utterance.voice = selectedMaleVoice;
+            }
+
+            const replayBtn = document.getElementById('btn-replay');
+            if (replayBtn) replayBtn.classList.add('speaking-pulse');
+
+            utterance.onend = () => {
+                if (replayBtn) replayBtn.classList.remove('speaking-pulse');
+                if (onEndCallback) onEndCallback();
+            };
+
+            utterance.onerror = () => {
+                if (replayBtn) replayBtn.classList.remove('speaking-pulse');
+                if (onEndCallback) onEndCallback();
+            };
+
+            speech.speak(utterance);
+        }
+
+        function getAudioContext() {
+            if (!synthAudioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) {
+                    synthAudioCtx = new AudioContext();
+                }
+            }
+            if (synthAudioCtx && synthAudioCtx.state === 'suspended') {
+                synthAudioCtx.resume();
+            }
+            return synthAudioCtx;
+        }
+
+        function playSound(type) {
+            if (isAudioMuted) return;
+            try {
+                const ctx = getAudioContext();
+                if (!ctx) return;
+
+                if (type === 'correct') {
+                    const notes = [523.25, 659.25, 783.99, 1046.50];
+                    notes.forEach((freq, idx) => {
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.08);
+                        gain.gain.setValueAtTime(0.3, ctx.currentTime + idx * 0.08);
+                        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.08 + 0.35);
+                        osc.connect(gain);
+                        gain.connect(ctx.destination);
+                        osc.start(ctx.currentTime + idx * 0.08);
+                        osc.stop(ctx.currentTime + idx * 0.08 + 0.4);
+                    });
+                } else if (type === 'wrong') {
+                    const freqs = [180, 140];
+                    freqs.forEach((freq, idx) => {
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.12);
+                        gain.gain.setValueAtTime(0.25, ctx.currentTime + idx * 0.12);
+                        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + idx * 0.12 + 0.2);
+                        osc.connect(gain);
+                        gain.connect(ctx.destination);
+                        osc.start(ctx.currentTime + idx * 0.12);
+                        osc.stop(ctx.currentTime + idx * 0.12 + 0.25);
+                    });
+                }
+            } catch (e) {
+                console.warn("Audio error:", e);
+            }
+        }
+
+        // Stummes Umschalten des Ton-Buttons
+        function toggleSound() {
+            isAudioMuted = !isAudioMuted;
+            const soundIcon = document.getElementById('sound-icon');
+            const soundBtn = document.getElementById('btn-sound');
+
+            if (isAudioMuted) {
+                soundIcon.className = "fa-solid fa-volume-xmark text-red-300";
+                soundBtn.classList.replace('bg-sky-900/80', 'bg-slate-700');
+                if (speech) speech.cancel();
+            } else {
+                soundIcon.className = "fa-solid fa-volume-high";
+                soundBtn.classList.replace('bg-slate-700', 'bg-sky-900/80');
+            }
+        }
+
+        function generateGameRounds() {
+            roundsData = [];
+            let lastSymbolName = "";
+
+            // Garantie: Jede Frage (1 oder 2) mindestens 2-mal pro 6er-Durchgang
+            let targetQuantities = [1, 1, 2, 2];
+            // Die verbleibenden 2 Aufgaben zufällig mit 1 oder 2 auffüllen
+            targetQuantities.push(Math.random() < 0.5 ? 1 : 2);
+            targetQuantities.push(Math.random() < 0.5 ? 1 : 2);
+
+            // Zufällig durchmischen
+            for (let i = targetQuantities.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [targetQuantities[i], targetQuantities[j]] = [targetQuantities[j], targetQuantities[i]];
+            }
+
+            for (let r = 0; r < TOTAL_ROUNDS; r++) {
+                let targetCount = targetQuantities[r];
+                let availableSymbols = SYMBOLS_POOL.filter(s => s.name !== lastSymbolName);
+                let chosenSymbol = availableSymbols[Math.floor(Math.random() * availableSymbols.length)];
+                lastSymbolName = chosenSymbol.name;
+
+                let cards = [
+                    { count: 1, isTarget: (targetCount === 1), symbol: chosenSymbol },
+                    { count: 2, isTarget: (targetCount === 2), symbol: chosenSymbol },
+                    { count: 3, isTarget: false, symbol: chosenSymbol }
+                ];
+
+                // Karten zufällig mischen
+                for (let i = cards.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [cards[i], cards[j]] = [cards[j], cards[i]];
+                }
+
+                roundsData.push({
+                    targetCount: targetCount,
+                    symbol: chosenSymbol,
+                    cards: cards
+                });
+            }
+        }
+
+        function startGame() {
+            getAudioContext();
+            generateGameRounds();
+            currentRound = 0;
+
+            document.getElementById('screen-start').classList.add('hidden');
+            document.getElementById('screen-end').classList.add('hidden');
+            document.getElementById('screen-game').classList.remove('hidden');
+            document.getElementById('progress-container').classList.remove('hidden');
+
+            loadRound(0);
+        }
+
+        function loadRound(index) {
+            isSolved = false;
+            currentRound = index;
+
+            Object.keys(cardTimeouts).forEach(key => clearTimeout(cardTimeouts[key]));
+            cardTimeouts = {};
+
+            const round = roundsData[index];
+
+            // Exakt das geforderte Format "1 / 6" ohne "Aufgabe"
+            document.getElementById('progress-text').innerText = `${index + 1} / ${TOTAL_ROUNDS}`;
+
+            // Frage-Titel dynamisch anpassen
+            document.getElementById('question-title').innerText = `Wo siehst du ${round.targetCount}?`;
+
+            for (let i = 0; i < 3; i++) {
+                const cardBtn = document.getElementById(`card-${i}`);
+                const cardContent = document.getElementById(`card-content-${i}`);
+                
+                cardBtn.className = "card-border-default bg-white hover:bg-slate-50 rounded-3xl p-4 sm:p-6 transition-all duration-200 flex items-center justify-center min-h-[160px] sm:min-h-[220px] md:min-h-[280px] relative cursor-pointer active:scale-95";
+                
+                const cardData = round.cards[i];
+                cardContent.innerHTML = "";
+
+                let sizeClass = "text-6xl sm:text-7xl md:text-8xl";
+                if (cardData.count === 3) sizeClass = "text-4xl sm:text-6xl md:text-7xl";
+                if (cardData.count === 1) sizeClass = "text-7xl sm:text-8xl md:text-9xl";
+
+                for (let c = 0; c < cardData.count; c++) {
+                    const span = document.createElement('span');
+                    span.className = `symbol-item ${sizeClass} select-none leading-none`;
+                    span.innerText = cardData.symbol.icon;
+                    cardContent.appendChild(span);
+                }
+            }
+
+            const feedbackEl = document.getElementById('feedback-text');
+            feedbackEl.innerText = "";
+            feedbackEl.classList.add('opacity-0');
+
+            speakQuestion();
+        }
+
+        function speakQuestion() {
+            const targetCount = roundsData[currentRound].targetCount;
+            // Natürliche Pause durch Komma vor der jeweiligen Ziffer (1 oder 2)
+            speakText(`Wo siehst du, ${targetCount}?`);
+        }
+
+        function selectCard(cardIndex) {
+            if (isSolved) return;
+
+            const round = roundsData[currentRound];
+            const selectedCard = round.cards[cardIndex];
+            const cardBtn = document.getElementById(`card-${cardIndex}`);
+            const feedbackEl = document.getElementById('feedback-text');
+
+            if (speech) speech.cancel();
+
+            if (selectedCard.isTarget) {
+                isSolved = true;
+                playSound('correct');
+
+                cardBtn.classList.remove('card-border-default', 'card-wrong');
+                cardBtn.classList.add('card-correct');
+
+                try {
+                    confetti({
+                        particleCount: 60,
+                        spread: 70,
+                        origin: { y: 0.6 }
+                    });
+                } catch(e) {}
+
+                // Grammatikalisch korrekte Rückmeldung: "Das ist 1" vs "Das sind 2"
+                const textFeedback = round.targetCount === 1 ? "Richtig! Das ist 1! 🎉" : "Richtig! Das sind 2! 🎉";
+                const audioFeedback = round.targetCount === 1 ? "Richtig! Das ist 1!" : "Richtig! Das sind 2!";
+
+                feedbackEl.innerText = textFeedback;
+                feedbackEl.className = "text-xl sm:text-3xl font-black text-center text-green-300 transition-all opacity-100 drop-shadow-md";
+
+                speakText(audioFeedback, () => {
+                    setTimeout(() => {
+                        if (currentRound + 1 < TOTAL_ROUNDS) {
+                            loadRound(currentRound + 1);
+                        } else {
+                            showEndScreen();
+                        }
+                    }, 400);
+                });
+
+            } else {
+                playSound('wrong');
+
+                if (cardTimeouts[cardIndex]) {
+                    clearTimeout(cardTimeouts[cardIndex]);
+                }
+
+                cardBtn.classList.remove('card-border-default', 'card-wrong');
+                void cardBtn.offsetWidth;
+                cardBtn.classList.add('card-wrong');
+
+                feedbackEl.innerText = "Versuche es noch einmal! 💡";
+                feedbackEl.className = "text-xl sm:text-3xl font-black text-center text-amber-200 transition-all opacity-100 drop-shadow-md";
+
+                speakText("Versuche es noch einmal!");
+
+                cardTimeouts[cardIndex] = setTimeout(() => {
+                    if (!isSolved) {
+                        cardBtn.classList.remove('card-wrong');
+                        cardBtn.classList.add('card-border-default');
+                    }
+                }, 600);
+            }
+        }
+
+        function showEndScreen() {
+            document.getElementById('screen-game').classList.add('hidden');
+            document.getElementById('progress-container').classList.add('hidden');
+            document.getElementById('screen-end').classList.remove('hidden');
+
+            playSound('correct');
+            try {
+                confetti({
+                    particleCount: 130,
+                    spread: 100,
+                    origin: { y: 0.5 }
+                });
+            } catch(e) {}
+
+            speakText("Super gemacht! Du hast alle Aufgaben geschafft!");
+        }
+
+        function confirmGoHome() {
+            const gameScreen = document.getElementById('screen-game');
+            if (!gameScreen.classList.contains('hidden')) {
+                document.getElementById('modal-confirm').classList.remove('hidden');
+            } else {
+                showStartScreen();
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('modal-confirm').classList.add('hidden');
+        }
+
+        function goHome() {
+            closeModal();
+            showStartScreen();
+        }
+
+        function showStartScreen() {
+            if (speech) speech.cancel();
+            document.getElementById('screen-game').classList.add('hidden');
+            document.getElementById('screen-end').classList.add('hidden');
+            document.getElementById('progress-container').classList.add('hidden');
+            document.getElementById('screen-start').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
